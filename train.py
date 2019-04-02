@@ -9,6 +9,7 @@ import numpy as np
 
 from torch.utils import data
 from tqdm import tqdm
+import torch.nn.functional as F
 
 from ptsemseg.models import get_model
 from ptsemseg.loss import get_loss_function
@@ -32,7 +33,7 @@ def train(cfg, writer, logger):
 
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    print(device)
     # Setup Augmentations
     augmentations = cfg["training"].get("augmentations", None)
     data_aug = get_composed_augmentations(augmentations)
@@ -114,33 +115,39 @@ def train(cfg, writer, logger):
     i = start_iter
     flag = True
 
+
+
     while i <= cfg["training"]["train_iters"] and flag:
-        for (images, labels) in trainloader:
+        for (images, labels, depths) in trainloader:
             i += 1
             start_ts = time.time()
             scheduler.step()
             model.train()
             images = images.to(device)
             labels = labels.to(device)
+            depths = depths.to(device)
 
             optimizer.zero_grad()
             outputs = model(images)
 
-            loss = loss_fn(input=outputs, target=labels)
-
+            # add depth loss
+            loss_seg = loss_fn(input=outputs[:,:-1,:,:], target=labels)
+            loss_dep = F.mse_loss(input=outputs[:,:-1,:,:], target=depths)
+            loss = loss_dep + loss_seg
             loss.backward()
             optimizer.step()
 
             time_meter.update(time.time() - start_ts)
 
             if (i + 1) % cfg["training"]["print_interval"] == 0:
-                fmt_str = "Iter [{:d}/{:d}]  Loss: {:.4f}  Time/Image: {:.4f}"
+                fmt_str = "Iter [{:d}/{:d}]  loss_seg: {:.4f}  loss_dep: {:.4f}  overall loss: {:.4f}   Time/Image: {:.4f}"
                 print_str = fmt_str.format(
                     i + 1,
                     cfg["training"]["train_iters"],
+                    loss_seg.item(),
+                    loss_dep.item(),
                     loss.item(),
-                    time_meter.avg / cfg["training"]["batch_size"],
-                )
+                    time_meter.avg / cfg["training"]["batch_size"])
 
                 print(print_str)
                 logger.info(print_str)
@@ -152,14 +159,21 @@ def train(cfg, writer, logger):
             ]:
                 model.eval()
                 with torch.no_grad():
-                    for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
+                    for i_val, (images_val, labels_val, depths_val) in tqdm(enumerate(valloader)):
                         images_val = images_val.to(device)
                         labels_val = labels_val.to(device)
+                        # add depth to device
+                        depths_val = depths_val.to(device)
 
                         outputs = model(images_val)
-                        val_loss = loss_fn(input=outputs, target=labels_val)
+                        # change validation losses
+                        seg_val_loss = loss_fn(input=outputs[:, :-1, :, :], target=labels_val)
+                        dep_val_loss = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val)
+                        val_loss = seg_val_loss + dep_val_loss
 
-                        pred = outputs.data.max(1)[1].cpu().numpy()
+
+                        pred = outputs[:, :-1, :, :]
+                        pred = pred.data.max(1)[1].cpu().numpy()
                         gt = labels_val.data.cpu().numpy()
 
                         running_metrics_val.update(gt, pred)
@@ -196,6 +210,9 @@ def train(cfg, writer, logger):
                     )
                     torch.save(state, save_path)
 
+                    # insert print function to see if the losses are correct
+
+
             if (i + 1) == cfg["training"]["train_iters"]:
                 flag = False
                 break
@@ -207,7 +224,7 @@ if __name__ == "__main__":
         "--config",
         nargs="?",
         type=str,
-        default="configs/fcn8s_pascal.yml",
+        default="configs/fcn8s_cityscapes.yml",
         help="Configuration file to use",
     )
 
