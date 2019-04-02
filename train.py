@@ -167,9 +167,9 @@ def train(cfg, writer, logger):
 
                         outputs = model(images_val)
                         # change validation losses
-                        seg_val_loss = loss_fn(input=outputs[:, :-1, :, :], target=labels_val)
-                        dep_val_loss = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val)
-                        val_loss = seg_val_loss + dep_val_loss
+                        val_loss_seg = loss_fn(input=outputs[:, :-1, :, :], target=labels_val)
+                        val_loss_dep = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val)
+                        val_loss = val_loss_seg + val_loss_dep
 
 
                         pred = outputs[:, :-1, :, :]
