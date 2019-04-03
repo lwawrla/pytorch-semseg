@@ -160,7 +160,12 @@ class cityscapesLoader(data.Dataset):
         )
 
         # add depth path
-        dep_path = self.files[self.split][index].rstrip()
+
+        dep_path = os.path.join(
+            self.depths_base,
+            img_path.split(os.sep)[-2],
+            os.path.basename(img_path)[:-15] + "disparity.png",
+        )
 
         img = m.imread(img_path)
         img = np.array(img, dtype=np.uint8)
@@ -169,10 +174,10 @@ class cityscapesLoader(data.Dataset):
         lbl = self.encode_segmap(np.array(lbl, dtype=np.uint8))
 
         dep = m.imread(dep_path)
-        dep = np.array(img, dtype=np.uint8)
+        dep = np.array(dep, dtype=np.float)
 
-        if self.augmentations is not None:
-            img, lbl, dep = self.augmentations(img, lbl, dep)
+        #if self.augmentations is not None:
+         #   img, lbl, dep = self.augmentations(img, lbl, dep)
 
         if self.is_transform:
             img, lbl, dep = self.transform(img, lbl, dep)
