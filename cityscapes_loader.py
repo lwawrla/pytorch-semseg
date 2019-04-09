@@ -175,10 +175,7 @@ class cityscapesLoader(data.Dataset):
         lbl = self.encode_segmap(np.array(lbl, dtype=np.uint8))
 
         dep = m.imread(dep_path)
-        dep = np.array(dep, dtype=np.float)
-
-        #mask = np.array(depth !=0, dtype= 'uint8')
-        #mask = torch.from_numpy(mask)
+        dep = np.array(dep, dtype=np.float
 
         # if self.augmentations is not None:
         # img, lbl, dep = self.augmentations(img, lbl, dep)
