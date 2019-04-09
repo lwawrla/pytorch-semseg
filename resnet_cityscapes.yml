@@ -1,0 +1,26 @@
+model:
+    arch: resnet
+data:
+    dataset: cityscapes
+    train_split: train
+    val_split: val
+    img_rows: 512
+    img_cols: 1024
+    path: /scratch_net/samuylov/wawrlal/Cityscape/Cityscape
+training:
+    train_iters: 20000
+    batch_size: 4
+    val_interval: 1000
+    n_workers: 0
+    print_interval: 25
+    optimizer:
+        name: 'sgd'
+        lr: 1.0e-3
+        weight_decay: 0.0001
+        momentum: 0.9
+    loss:
+        name: 'cross_entropy'
+    lr_schedule:
+        name: 'poly_lr'
+        max_iter: 30000
+    resume:

@@ -1,0 +1,43 @@
+2019-04-08 15:53:04,146 INFO Let the games begin
+2019-04-08 15:53:04,230 INFO Using No Augmentations
+2019-04-08 15:53:09,660 INFO Using sgd optimizer
+2019-04-08 15:53:09,661 INFO Using optimizer SGD (
+Parameter Group 0
+    dampening: 0
+    lr: 0.001
+    momentum: 0.9
+    nesterov: False
+    weight_decay: 0.0001
+)
+2019-04-08 15:53:09,662 INFO Using cross_entropy with {} params
+2019-04-08 15:53:09,662 INFO Using loss functools.partial(<function cross_entropy2d at 0x2ab194104d90>)
+2019-04-08 15:53:53,135 INFO Iter [25/20000]  loss_seg: 3.2317  loss_dep: 79559424.0000  overall loss: 79559424.0000   Time/Image: 0.2120
+2019-04-08 15:54:38,320 INFO Iter [50/20000]  loss_seg: 2.7513  loss_dep: 27339968.0000  overall loss: 27339970.0000   Time/Image: 0.2107
+2019-04-08 15:55:23,708 INFO Iter [75/20000]  loss_seg: 2.3849  loss_dep: 23603470.0000  overall loss: 23603472.0000   Time/Image: 0.2112
+2019-04-08 15:56:08,986 INFO Iter [100/20000]  loss_seg: 1.9993  loss_dep: 14896990.0000  overall loss: 14896992.0000   Time/Image: 0.2117
+2019-04-08 15:56:56,607 INFO Iter [125/20000]  loss_seg: 1.6414  loss_dep: 32148654.0000  overall loss: 32148656.0000   Time/Image: 0.2123
+2019-04-08 15:57:50,733 INFO Iter [150/20000]  loss_seg: 1.5820  loss_dep: 16337908.0000  overall loss: 16337910.0000   Time/Image: 0.2127
+2019-04-08 15:58:42,994 INFO Iter [175/20000]  loss_seg: 1.8952  loss_dep: 26096416.0000  overall loss: 26096418.0000   Time/Image: 0.2125
+2019-04-08 15:59:41,369 INFO Iter [200/20000]  loss_seg: 1.9031  loss_dep: 24662790.0000  overall loss: 24662792.0000   Time/Image: 0.2129
+2019-04-08 16:00:41,971 INFO Iter [225/20000]  loss_seg: 1.4713  loss_dep: 25636438.0000  overall loss: 25636440.0000   Time/Image: 0.2124
+2019-04-08 16:01:36,021 INFO Iter [250/20000]  loss_seg: 1.7259  loss_dep: 14589986.0000  overall loss: 14589988.0000   Time/Image: 0.2123
+2019-04-08 16:02:31,390 INFO Iter [275/20000]  loss_seg: 1.5324  loss_dep: 10695523.0000  overall loss: 10695525.0000   Time/Image: 0.2119
+2019-04-08 16:03:26,625 INFO Iter [300/20000]  loss_seg: 1.5188  loss_dep: 13026302.0000  overall loss: 13026304.0000   Time/Image: 0.2120
+2019-04-08 16:04:22,608 INFO Iter [325/20000]  loss_seg: 1.3113  loss_dep: 10868926.0000  overall loss: 10868927.0000   Time/Image: 0.2121
+2019-04-08 16:05:17,241 INFO Iter [350/20000]  loss_seg: 1.5136  loss_dep: 12098754.0000  overall loss: 12098756.0000   Time/Image: 0.2122
+2019-04-08 16:06:13,014 INFO Iter [375/20000]  loss_seg: 1.4362  loss_dep: 18501208.0000  overall loss: 18501210.0000   Time/Image: 0.2123
+2019-04-08 16:07:05,935 INFO Iter [400/20000]  loss_seg: 1.5316  loss_dep: 16007189.0000  overall loss: 16007191.0000   Time/Image: 0.2124
+2019-04-08 16:08:00,927 INFO Iter [425/20000]  loss_seg: 1.1543  loss_dep: 17435336.0000  overall loss: 17435338.0000   Time/Image: 0.2122
+2019-04-08 16:08:55,435 INFO Iter [450/20000]  loss_seg: 1.3784  loss_dep: 11299964.0000  overall loss: 11299965.0000   Time/Image: 0.2118
+2019-04-08 16:09:49,845 INFO Iter [475/20000]  loss_seg: 1.4663  loss_dep: 16800640.0000  overall loss: 16800642.0000   Time/Image: 0.2116
+2019-04-08 16:10:42,638 INFO Iter [500/20000]  loss_seg: 1.2842  loss_dep: 14082300.0000  overall loss: 14082301.0000   Time/Image: 0.2118
+2019-04-08 16:11:39,054 INFO Iter [525/20000]  loss_seg: 1.2483  loss_dep: 18438570.0000  overall loss: 18438572.0000   Time/Image: 0.2120
+2019-04-08 16:12:32,152 INFO Iter [550/20000]  loss_seg: 1.6159  loss_dep: 13455174.0000  overall loss: 13455176.0000   Time/Image: 0.2114
+2019-04-08 16:13:26,611 INFO Iter [575/20000]  loss_seg: 1.2973  loss_dep: 14894590.0000  overall loss: 14894591.0000   Time/Image: 0.2121
+2019-04-08 16:14:20,650 INFO Iter [600/20000]  loss_seg: 1.4797  loss_dep: 13320522.0000  overall loss: 13320523.0000   Time/Image: 0.2120
+2019-04-08 16:15:14,848 INFO Iter [625/20000]  loss_seg: 1.3445  loss_dep: 12300798.0000  overall loss: 12300799.0000   Time/Image: 0.2118
+2019-04-08 16:16:08,318 INFO Iter [650/20000]  loss_seg: 1.4151  loss_dep: 14769428.0000  overall loss: 14769429.0000   Time/Image: 0.2124
+2019-04-08 16:17:04,466 INFO Iter [675/20000]  loss_seg: 1.4003  loss_dep: 10087196.0000  overall loss: 10087197.0000   Time/Image: 0.2122
+2019-04-08 16:17:58,802 INFO Iter [700/20000]  loss_seg: 1.3851  loss_dep: 16266527.0000  overall loss: 16266528.0000   Time/Image: 0.2122
+2019-04-08 16:18:54,807 INFO Iter [725/20000]  loss_seg: 1.3271  loss_dep: 9152735.0000  overall loss: 9152736.0000   Time/Image: 0.2124
+2019-04-08 16:19:46,057 INFO Iter [750/20000]  loss_seg: 1.0999  loss_dep: 9335769.0000  overall loss: 9335770.0000   Time/Image: 0.2104
