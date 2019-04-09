@@ -43,7 +43,7 @@ class cityscapesLoader(data.Dataset):
         [119, 11, 32],
     ]
 
-    label_colours = dict(zip(range(19+1), colors))
+    label_colours = dict(zip(range(19), colors))
 
     mean_rgb = {
         "pascal": [103.939, 116.779, 123.68],
@@ -55,11 +55,12 @@ class cityscapesLoader(data.Dataset):
         root,
         split="train",
         is_transform=False,
-        img_size=(512, 1024),
+        img_size=(1024, 2048),
         augmentations=None,
         img_norm=True,
         version="cityscapes",
         test_mode=False,
+        n_classes = 21,
 
 
     ):
@@ -76,7 +77,7 @@ class cityscapesLoader(data.Dataset):
         self.is_transform = is_transform
         self.augmentations = augmentations
         self.img_norm = img_norm
-        self.n_classes = 19+1
+        self.n_classes = n_classes
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
         self.mean = np.array(self.mean_rgb[version])
         self.files = {}
@@ -176,8 +177,11 @@ class cityscapesLoader(data.Dataset):
         dep = m.imread(dep_path)
         dep = np.array(dep, dtype=np.float)
 
-        #if self.augmentations is not None:
-         #   img, lbl, dep = self.augmentations(img, lbl, dep)
+        #mask = np.array(depth !=0, dtype= 'uint8')
+        #mask = torch.from_numpy(mask)
+
+        # if self.augmentations is not None:
+        # img, lbl, dep = self.augmentations(img, lbl, dep)
 
         if self.is_transform:
             img, lbl, dep = self.transform(img, lbl, dep)
@@ -207,7 +211,7 @@ class cityscapesLoader(data.Dataset):
         lbl = m.imresize(lbl, (self.img_size[0], self.img_size[1]), "nearest", mode="F")
         lbl = lbl.astype(int)
 
-        dep = dep.astzpe(float)
+        dep = dep.astype(float)
         dep = m.imresize(dep, (self.img_size[0], self.img_size[1]), "bilinear", mode="F")
 
         if not np.all(classes == np.unique(lbl)):
