@@ -34,6 +34,7 @@ def train(cfg, writer, logger):
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
+
     # Setup Augmentations
     augmentations = cfg["training"].get("augmentations", None)
     data_aug = get_composed_augmentations(augmentations)
@@ -48,6 +49,7 @@ def train(cfg, writer, logger):
         split=cfg["data"]["train_split"],
         img_size=(cfg["data"]["img_rows"], cfg["data"]["img_cols"]),
         augmentations=data_aug,
+        #n_classes = 20,
     )
 
     v_loader = data_loader(
@@ -108,7 +110,12 @@ def train(cfg, writer, logger):
         else:
             logger.info("No checkpoint found at '{}'".format(cfg["training"]["resume"]))
 
-    val_loss_meter = averageMeter()
+    #val_loss_meter = averageMeter()
+
+    # get loss_seg meter and also loss_dep meter
+
+    loss_seg_meter = averageMeter()
+    loss_dep_meter = averageMeter()
     time_meter = averageMeter()
 
     best_iou = -100.0
@@ -126,14 +133,19 @@ def train(cfg, writer, logger):
             images = images.to(device)
             labels = labels.to(device)
             depths = depths.to(device)
-
+            
+            #print(images.shape)
             optimizer.zero_grad()
             outputs = model(images)
-
+            #print('depths size: ', depths.size())
+            #print('output shape: ', outputs.shape)
             # add depth loss
+
             loss_seg = loss_fn(input=outputs[:,:-1,:,:], target=labels)
-            loss_dep = F.mse_loss(input=outputs[:,:-1,:,:], target=depths)
+            loss_dep = F.mse_loss(input=outputs[:, -1,:,:], target=depths, reduction='mean')
             loss = loss_dep + loss_seg
+
+
             loss.backward()
             optimizer.step()
 
@@ -163,24 +175,39 @@ def train(cfg, writer, logger):
                         images_val = images_val.to(device)
                         labels_val = labels_val.to(device)
                         # add depth to device
-                        depths_val = depths_val.to(device)
 
                         outputs = model(images_val)
+
+
+                        #depths_val = depths_val.data.resize_(depths_val.size(0), outputs.size(2), outputs.size(3))
+
+
+                        depths_val = depths_val.to(device)
+
+
                         # change validation losses
                         val_loss_seg = loss_fn(input=outputs[:, :-1, :, :], target=labels_val)
-                        val_loss_dep = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val)
-                        val_loss = val_loss_seg + val_loss_dep
+                        val_loss_dep = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val, reduction='none')
+
+
+                        # val_loss = val_loss_seg + val_loss_dep
 
 
                         pred = outputs[:, :-1, :, :]
                         pred = pred.data.max(1)[1].cpu().numpy()
                         gt = labels_val.data.cpu().numpy()
 
+                        # adapt metrics to seg and dep
                         running_metrics_val.update(gt, pred)
-                        val_loss_meter.update(val_loss.item())
+                        loss_seg_meter.update(val_loss_seg.item())
+                        loss_dep_meter.update(val_loss_dep.item())
+
+                        # get rid of val_loss_meter
+                        # val_loss_meter.update(val_loss.item())
 
                 writer.add_scalar("loss/val_loss", val_loss_meter.avg, i + 1)
                 logger.info("Iter %d Loss: %.4f" % (i + 1, val_loss_meter.avg))
+
 
                 score, class_iou = running_metrics_val.get_scores()
                 for k, v in score.items():
@@ -192,7 +219,9 @@ def train(cfg, writer, logger):
                     logger.info("{}: {}".format(k, v))
                     writer.add_scalar("val_metrics/cls_{}".format(k), v, i + 1)
 
-                val_loss_meter.reset()
+                # val_loss_meter.reset()
+                loss_seg_meter.reset()
+                loss_dep_meter.reset()
                 running_metrics_val.reset()
 
                 if score["Mean IoU : \t"] >= best_iou:
