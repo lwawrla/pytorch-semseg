@@ -22,6 +22,27 @@ from ptsemseg.optimizers import get_optimizer
 
 from tensorboardX import SummaryWriter
 
+# implement berhu loss function
+
+def berhu_loss_function(prediction, target):
+    #print(prediction.size())
+    #print(target.size())
+    #print(type(prediction)) # class 'torch.Tensor'
+    #print(type(target)) # class 'torch.Tensor'
+    # prediction, target = torch.from_numpy(prediction), torch.from_numpy(target)
+    prediction, target = prediction.type(torch.cuda.FloatTensor), target.type(torch.cuda.FloatTensor)
+    #prediction = torch.unsqueeze(prediction, 1)
+
+    abs_error = torch.abs(prediction - target)
+
+    # -----------------------------------------------------------------
+    # Structure: torch.max(dim=None, keepdim=False)
+    c,_ = torch.max(abs_error, dim=1, keepdim=True)
+    c, _ = torch.max(c, dim=2, keepdim=True)
+    c = c / (5.0)
+    print('c shape', c.size())
+    berhu_loss = torch.where(abs_error <= c, abs_error, (c**2 + abs_error**2)/(2*c))
+    return berhu_loss
 
 def train(cfg, writer, logger):
 
@@ -49,7 +70,7 @@ def train(cfg, writer, logger):
         split=cfg["data"]["train_split"],
         img_size=(cfg["data"]["img_rows"], cfg["data"]["img_cols"]),
         augmentations=data_aug,
-        #n_classes = 20,
+        n_classes = 20,
     )
 
     v_loader = data_loader(
@@ -70,9 +91,9 @@ def train(cfg, writer, logger):
     valloader = data.DataLoader(
         v_loader, batch_size=cfg["training"]["batch_size"], num_workers=cfg["training"]["n_workers"]
     )
-
-    # Setup Metrics
-    running_metrics_val = runningScore(n_classes)
+    # -----------------------------------------------------------------
+    # Setup Metrics (substract one class)
+    running_metrics_val = runningScore(n_classes-1)
 
     # Setup Model
     model = get_model(cfg["model"], n_classes).to(device)
@@ -110,7 +131,7 @@ def train(cfg, writer, logger):
         else:
             logger.info("No checkpoint found at '{}'".format(cfg["training"]["resume"]))
 
-    #val_loss_meter = averageMeter()
+    val_loss_meter = averageMeter()
 
     # get loss_seg meter and also loss_dep meter
 
@@ -125,7 +146,7 @@ def train(cfg, writer, logger):
 
 
     while i <= cfg["training"]["train_iters"] and flag:
-        for (images, labels, depths) in trainloader:
+        for (images, labels, masks, depths) in trainloader:
             i += 1
             start_ts = time.time()
             scheduler.step()
@@ -133,18 +154,32 @@ def train(cfg, writer, logger):
             images = images.to(device)
             labels = labels.to(device)
             depths = depths.to(device)
-            
+
             #print(images.shape)
             optimizer.zero_grad()
             outputs = model(images)
             #print('depths size: ', depths.size())
             #print('output shape: ', outputs.shape)
-            # add depth loss
+
 
             loss_seg = loss_fn(input=outputs[:,:-1,:,:], target=labels)
-            loss_dep = F.mse_loss(input=outputs[:, -1,:,:], target=depths, reduction='mean')
-            loss = loss_dep + loss_seg
 
+            # -----------------------------------------------------------------
+            # add depth loss
+
+            # -----------------------------------------------------------------
+            # MSE loss
+            # loss_dep = F.mse_loss(input=outputs[:, -1,:,:], target=depths, reduction='mean')
+
+            # -----------------------------------------------------------------
+            # Berhu loss
+            loss_dep = berhu_loss_function(prediction = outputs[:,-1,:,:], target=depths)
+            #loss_dep = loss_dep.type(torch.cuda.ByteTensor)
+            masks = masks.type(torch.cuda.ByteTensor)
+            loss_dep = torch.sum(loss_dep[masks])/torch.sum(masks)
+            print('loss depth', loss_dep)
+            loss = loss_dep + loss_seg
+            # -----------------------------------------------------------------
 
             loss.backward()
             optimizer.step()
@@ -167,46 +202,54 @@ def train(cfg, writer, logger):
                 time_meter.reset()
 
             if (i + 1) % cfg["training"]["val_interval"] == 0 or (i + 1) == cfg["training"][
-                "train_iters"
-            ]:
+                "train_iters"]:
+
                 model.eval()
                 with torch.no_grad():
-                    for i_val, (images_val, labels_val, depths_val) in tqdm(enumerate(valloader)):
+                    for i_val, (images_val, labels_val, masks_val, depths_val) in tqdm(enumerate(valloader)):
                         images_val = images_val.to(device)
                         labels_val = labels_val.to(device)
+                        print('images_val shape', images_val.size())
                         # add depth to device
-
-                        outputs = model(images_val)
-
-
-                        #depths_val = depths_val.data.resize_(depths_val.size(0), outputs.size(2), outputs.size(3))
-
-
                         depths_val = depths_val.to(device)
 
+                        outputs = model(images_val)
+                        #depths_val = depths_val.data.resize_(depths_val.size(0), outputs.size(2), outputs.size(3))
 
-                        # change validation losses
-                        val_loss_seg = loss_fn(input=outputs[:, :-1, :, :], target=labels_val)
-                        val_loss_dep = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val, reduction='none')
+                        # -----------------------------------------------------------------
+                        # loss function for segmentation
+                        print('output shape', outputs.size())
+                        val_loss_seg = loss_fn(input=outputs[:,:-1,:,:], target=labels_val)
+
+                        # -----------------------------------------------------------------
+                        # MSE loss
+                        # val_loss_dep = F.mse_loss(input=outputs[:, -1, :, :], target=depths_val, reduction='mean')
 
 
-                        # val_loss = val_loss_seg + val_loss_dep
+                        # -----------------------------------------------------------------
+                        # berhu loss function
+                        val_loss_dep = berhu_loss_function(prediction=outputs[:,-1, :, :], target=depths_val)
+                        val_loss_dep = val_loss_dep.type(torch.cuda.ByteTensor)
+                        masks_val = masks_val.type(torch.cuda.ByteTensor)
+                        val_loss_dep = torch.sum(val_loss_dep[masks_val]) / torch.sum(masks_val)
+                        val_loss = loss_dep + loss_seg
+                        # -----------------------------------------------------------------
 
-
-                        pred = outputs[:, :-1, :, :]
-                        pred = pred.data.max(1)[1].cpu().numpy()
+                        prediction = outputs[:,:-1, :, :]
+                        prediction = prediction.data.max(1)[1].cpu().numpy()
                         gt = labels_val.data.cpu().numpy()
 
                         # adapt metrics to seg and dep
-                        running_metrics_val.update(gt, pred)
+                        running_metrics_val.update(gt, prediction)
                         loss_seg_meter.update(val_loss_seg.item())
                         loss_dep_meter.update(val_loss_dep.item())
 
+                        # -----------------------------------------------------------------
                         # get rid of val_loss_meter
                         # val_loss_meter.update(val_loss.item())
-
-                writer.add_scalar("loss/val_loss", val_loss_meter.avg, i + 1)
-                logger.info("Iter %d Loss: %.4f" % (i + 1, val_loss_meter.avg))
+                        # writer.add_scalar("loss/val_loss", val_loss_meter.avg, i + 1)
+                        # logger.info("Iter %d Loss: %.4f" % (i + 1, val_loss_meter.avg))
+                        # -----------------------------------------------------------------
 
 
                 score, class_iou = running_metrics_val.get_scores()
@@ -219,7 +262,18 @@ def train(cfg, writer, logger):
                     logger.info("{}: {}".format(k, v))
                     writer.add_scalar("val_metrics/cls_{}".format(k), v, i + 1)
 
-                # val_loss_meter.reset()
+
+                print("Segmentation loss is {}".format(loss_seg_meter.avg))
+                logger.info("Segmentation loss is {}".format(loss_seg_meter.avg))
+                #writer.add_scalar("Segmentation loss is {}".format(loss_seg_meter.avg), i + 1)
+
+
+                print("Depth loss is {}".format(loss_dep_meter.avg))
+                logger.info("Depth loss is {}".format(loss_dep_meter.avg))
+                #writer.add_scalar("Depth loss is {}".format(loss_dep_meter.avg), i + 1)
+
+
+                val_loss_meter.reset()
                 loss_seg_meter.reset()
                 loss_dep_meter.reset()
                 running_metrics_val.reset()

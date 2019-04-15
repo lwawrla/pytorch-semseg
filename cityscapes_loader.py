@@ -160,6 +160,7 @@ class cityscapesLoader(data.Dataset):
             os.path.basename(img_path)[:-15] + "gtFine_labelIds.png",
         )
 
+        # -------------------------------------------------
         # add depth path
 
         dep_path = os.path.join(
@@ -174,16 +175,30 @@ class cityscapesLoader(data.Dataset):
         lbl = m.imread(lbl_path)
         lbl = self.encode_segmap(np.array(lbl, dtype=np.uint8))
 
+        # -------------------------------------------------
+        # add depth
         dep = m.imread(dep_path)
-        dep = np.array(dep, dtype=np.float
+        dep = np.array(dep, dtype=np.float)
 
-        # if self.augmentations is not None:
-        # img, lbl, dep = self.augmentations(img, lbl, dep)
+        # -------------------------------------------------
+        # add masks
+        mask = np.array(dep > 0, dtype = 'uint8')
 
+        # -------------------------------------------------
+        # augmentations (add masks for random crop)
+
+        if self.augmentations is not None:
+            img, mask, lbl, dep = self.augmentations(img, mask, lbl, dep)
+
+        #print(img.shape)
         if self.is_transform:
             img, lbl, dep = self.transform(img, lbl, dep)
 
-        return img, lbl, dep
+        # -------------------------------------------------
+        # convert masks
+        mask = torch.from_numpy(mask)
+
+        return img, lbl, dep, mask
 
     def transform(self, img, lbl, dep):
         """transform
@@ -191,8 +206,9 @@ class cityscapesLoader(data.Dataset):
         :param img:
         :param lbl:
         :param dep:
+        :param mask:
         """
-        img = m.imresize(img, (self.img_size[0], self.img_size[1]))  # uint8 with RGB mode
+        #img = m.imresize(img, (self.img_size[0], self.img_size[1]))  # uint8 with RGB mode
         img = img[:, :, ::-1]  # RGB -> BGR
         img = img.astype(np.float64)
         img -= self.mean
@@ -205,11 +221,11 @@ class cityscapesLoader(data.Dataset):
 
         classes = np.unique(lbl)
         lbl = lbl.astype(float)
-        lbl = m.imresize(lbl, (self.img_size[0], self.img_size[1]), "nearest", mode="F")
+        #lbl = m.imresize(lbl, (self.img_size[0], self.img_size[1]), "nearest", mode="F")
         lbl = lbl.astype(int)
 
         dep = dep.astype(float)
-        dep = m.imresize(dep, (self.img_size[0], self.img_size[1]), "bilinear", mode="F")
+        #dep = m.imresize(dep, (self.img_size[0], self.img_size[1]), "bilinear", mode="F")
 
         if not np.all(classes == np.unique(lbl)):
             print("WARN: resizing labels yielded fewer classes")
@@ -253,7 +269,7 @@ if __name__ == "__main__":
 
     augmentations = Compose([Scale(2048), RandomRotate(10), RandomHorizontallyFlip(0.5)])
 
-    local_path = "/datasets01/cityscapes/112817/"
+    local_path = "/scratch_net/samuylov/wawrlal/cityscape/cityscape"
     dst = cityscapesLoader(local_path, is_transform=True, augmentations=augmentations)
     bs = 4
     trainloader = data.DataLoader(dst, batch_size=bs, num_workers=0)
